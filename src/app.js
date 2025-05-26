@@ -10,10 +10,10 @@ app.use(cors({
 }));
 
 
-app.use(express.json({limit: "16kb"}))
-app.use(express.urlencoded({extended: true, limit: "16kb"}))
+app.use(express.json({limit: "16kb"})) //limits incoming json payload to acoid large payload affecting performance
+app.use(express.urlencoded({extended: true, limit: "16kb"})) //parses data from urlencoded like forms
 app.use(express.static("public")) //public mai stored files can be served
-app.use(cookieParser());
+app.use(cookieParser()); //gives cookie access to req.cookies and used in auth etc
 
 //routes
 

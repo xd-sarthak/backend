@@ -60,6 +60,7 @@ const userSchema = new Schema(
     }
 );
 
+//if password modified then hash it before saving, it is a middleware
 userSchema.pre("save",async function (next) {
     if(!this.isModified("password")) return next();
 
