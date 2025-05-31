@@ -1,4 +1,4 @@
-# VideoShare – YouTube-like Video Hosting Platform 🎥
+# STREAMLY – YouTube-like Video Hosting Platform 🎥
 
 A robust and scalable backend application built using **Node.js**, **Express.js**, and **MongoDB**. This project powers a full-featured video hosting platform with all essential YouTube-like functionalities.
 
