@@ -42,7 +42,11 @@ app.use(cors(corsOptions));
 // Ensure preflight requests are handled
 app.options("*", cors(corsOptions));
 
-// Ensure responses always include the expected CORS headers (defensive)
+app.use((req, res, next) => {
+  console.log("INCOMING:", req.method, req.url, "ORIGIN:", req.headers.origin);
+  next();
+});
+
 
 
 app.use(express.json());
