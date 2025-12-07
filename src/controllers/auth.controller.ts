@@ -48,33 +48,18 @@ export const googleLoginCallback = asyncHandler(
     // This allows duplicate requests to redirect to the correct workspace
     (req as any).oauthRedirectUrl = redirectUrl;
 
-    // Ensure session is saved before redirecting
-    // This is important for cross-domain redirects
-    return new Promise<void>((resolve, reject) => {
-      req.session?.save((err: Error | null) => {
-        if (err) {
-          console.error("[GOOGLE CALLBACK] Error saving session:", err);
-          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-          res.setHeader("Pragma", "no-cache");
-          res.setHeader("Expires", "0");
-          return res.redirect(
-            `${config.FRONTEND_ORIGIN}/auth/google-failure?error=session_error`
-          );
-        }
+    console.log("[GOOGLE CALLBACK] Redirecting to:", redirectUrl);
 
-        console.log("[GOOGLE CALLBACK] Redirecting to:", redirectUrl);
-
-        // Set headers to prevent caching/retries and ensure clean redirect
-        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-        res.setHeader("Pragma", "no-cache");
-        res.setHeader("Expires", "0");
-        res.setHeader("X-Robots-Tag", "noindex, nofollow");
-        
-        // Perform redirect
-        res.redirect(302, redirectUrl);
-        resolve();
-      });
-    });
+    // Set headers to prevent caching/retries and ensure clean redirect
+    // Note: cookie-session automatically saves the session, no need to call save()
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    
+    // Perform redirect
+    // cookie-session will automatically save the session before sending the response
+    return res.redirect(302, redirectUrl);
   }
 );
 
