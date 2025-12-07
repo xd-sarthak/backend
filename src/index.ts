@@ -96,6 +96,11 @@ app.get(
 
 // Lightweight health-check endpoint (no authentication)
 app.get("/health", (_req: Request, res: Response) => res.sendStatus(200));
+app.use((req, res, next) => {
+  console.log("REQ:", req.method, req.url);
+  next();
+});
+
 
 app.use(`${BASE_PATH}/auth`, authRoutes);
 app.use(`${BASE_PATH}/user`, isAuthenticated, userRoutes);
@@ -104,8 +109,7 @@ app.use(`${BASE_PATH}/member`, isAuthenticated, memberRoutes);
 app.use(`${BASE_PATH}/project`, isAuthenticated, projectRoutes);
 app.use(`${BASE_PATH}/task`, isAuthenticated, taskRoutes);
 
-const listEndpoints = require("express-list-endpoints");
-console.log(listEndpoints(app));
+
 
 app.use(errorHandler);
 
