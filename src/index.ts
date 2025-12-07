@@ -43,15 +43,7 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // Ensure responses always include the expected CORS headers (defensive)
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header(
-    "Access-Control-Allow-Headers",
-    corsOptions.allowedHeaders!.join(", ")
-  );
-  next();
-});
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
