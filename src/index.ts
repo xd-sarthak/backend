@@ -21,6 +21,8 @@ import taskRoutes from "./routes/task.route";
 
 const app = express();
 const BASE_PATH = config.BASE_PATH;
+console.log(">>> EFFECTIVE BASE_PATH =", BASE_PATH);
+
 
 // CORS configuration — placed at the very top so it runs before any other middleware
 const corsOptions: cors.CorsOptions = {
@@ -101,6 +103,9 @@ app.use(`${BASE_PATH}/workspace`, isAuthenticated, workspaceRoutes);
 app.use(`${BASE_PATH}/member`, isAuthenticated, memberRoutes);
 app.use(`${BASE_PATH}/project`, isAuthenticated, projectRoutes);
 app.use(`${BASE_PATH}/task`, isAuthenticated, taskRoutes);
+
+const listEndpoints = require("express-list-endpoints");
+console.log(listEndpoints(app));
 
 app.use(errorHandler);
 
