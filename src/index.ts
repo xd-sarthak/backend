@@ -23,12 +23,20 @@ const app = express();
 const BASE_PATH = config.BASE_PATH;
 console.log(">>> EFFECTIVE BASE_PATH =", BASE_PATH);
 
+// Trust proxy - required for Render and other proxy services
+// This ensures req.protocol, req.hostname, and req.ip work correctly
+app.set("trust proxy", 1);
 
 // CORS configuration — placed at the very top so it runs before any other middleware
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Allow no-origin requests (health checks, server-to-server, curl)
+    // Allow no-origin requests (health checks, server-to-server, curl, OAuth callbacks from Google)
     if (!origin) return callback(null, true);
+
+    // Allow frontend origin explicitly
+    if (origin === config.FRONTEND_ORIGIN) {
+      return callback(null, true);
+    }
 
     // Allow ANY *.vercel.app domain
     if (/\.vercel\.app$/.test(origin)) {
@@ -78,7 +86,8 @@ app.use(
     maxAge: 24 * 60 * 60 * 1000,
     secure: isProd, // secure cookies in production (requires HTTPS)
     httpOnly: true,
-    sameSite: isProd ? ("none" as const) : ("lax" as const),
+    sameSite: "lax" as const, // Changed from 'none' to 'lax' for better cross-domain support
+    domain: isProd ? undefined : undefined, // Let browser set domain automatically
   })
 );
 

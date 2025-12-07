@@ -7,8 +7,8 @@ import {
   logOutController,
   registerUserController,
 } from "../controllers/auth.controller";
-import { Request,Response,NextFunction } from "express";
-const failedUrl = `${config.FRONTEND_GOOGLE_CALLBACK_URL}?status=failure`;
+import { Request, Response, NextFunction } from "express";
+import { oauthCodeDeduplication } from "../middlewares/oauthCodeDeduplication.middleware";
 
 const authRoutes = Router();
 
@@ -19,8 +19,12 @@ authRoutes.post("/logout", logOutController);
 
 authRoutes.get(
   "/google",
-  (req, res, next) => {
-    console.log("[GOOGLE OAUTH] Redirecting to:", config.GOOGLE_CALLBACK_URL);
+  (req: Request, res: Response, next: NextFunction) => {
+    console.log(
+      `[GOOGLE OAUTH] Initiating OAuth flow at ${new Date().toISOString()}`
+    );
+    console.log("[GOOGLE OAUTH] Callback URL:", config.GOOGLE_CALLBACK_URL);
+    console.log("[GOOGLE OAUTH] Frontend Origin:", config.FRONTEND_ORIGIN);
     next();
   },
   passport.authenticate("google", {
@@ -28,11 +32,32 @@ authRoutes.get(
   })
 );
 
-
+// OAuth callback route with deduplication and error handling
 authRoutes.get(
   "/google/callback",
+  (req: Request, res: Response, next: NextFunction) => {
+    const code = req.query.code as string | undefined;
+    const error = req.query.error as string | undefined;
+
+    console.log(
+      `[GOOGLE CALLBACK] Received callback at ${new Date().toISOString()}`
+    );
+    console.log("[GOOGLE CALLBACK] Code present:", !!code);
+    console.log("[GOOGLE CALLBACK] Error:", error || "none");
+
+    if (error) {
+      console.error(`[GOOGLE CALLBACK] OAuth error: ${error}`);
+      return res.redirect(
+        `${config.FRONTEND_ORIGIN}/auth/google-failure?error=${encodeURIComponent(error)}`
+      );
+    }
+
+    next();
+  },
+  oauthCodeDeduplication,
   passport.authenticate("google", {
-    failureRedirect: failedUrl,
+    failureRedirect: `${config.FRONTEND_ORIGIN}/auth/google-failure`,
+    session: true,
   }),
   googleLoginCallback
 );

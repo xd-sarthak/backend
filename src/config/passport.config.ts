@@ -21,15 +21,25 @@ passport.use(
       passReqToCallback: true,
     },
     async (req: Request, accessToken, refreshToken, profile, done) => {
-      console.log("GOOGLE CALLBACK BEING USED:", config.GOOGLE_CALLBACK_URL);
+      console.log(
+        `[PASSPORT GOOGLE] Processing OAuth callback at ${new Date().toISOString()}`
+      );
+      console.log("[PASSPORT GOOGLE] Callback URL:", config.GOOGLE_CALLBACK_URL);
       try {
         const { email, sub: googleId, picture } = profile._json;
-        console.log(profile, "profile");
-        console.log(googleId, "googleId");
+        console.log("[PASSPORT GOOGLE] Profile received:", {
+          displayName: profile.displayName,
+          email,
+          googleId,
+          hasPicture: !!picture,
+        });
+
         if (!googleId) {
+          console.error("[PASSPORT GOOGLE] Google ID (sub) is missing from profile");
           throw new NotFoundException("Google ID (sub) is missing");
         }
 
+        console.log("[PASSPORT GOOGLE] Creating/updating user account...");
         const { user } = await loginOrCreateAccountService({
           provider: ProviderEnum.GOOGLE,
           displayName: profile.displayName,
@@ -37,8 +47,16 @@ passport.use(
           picture: picture,
           email: email,
         });
+
+        console.log(
+          `[PASSPORT GOOGLE] Successfully authenticated user: ${user._id || user.id}`
+        );
         done(null, user);
-      } catch (error) {
+      } catch (error: any) {
+        console.error("[PASSPORT GOOGLE] Error during authentication:", {
+          message: error?.message,
+          stack: error?.stack,
+        });
         done(error, false);
       }
     }

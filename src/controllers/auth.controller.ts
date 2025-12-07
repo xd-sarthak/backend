@@ -8,17 +8,37 @@ import passport from "passport";
 
 export const googleLoginCallback = asyncHandler(
   async (req: Request, res: Response) => {
-    const currentWorkspace = req.user?.currentWorkspace;
+    console.log(
+      `[GOOGLE CALLBACK] Successfully authenticated user at ${new Date().toISOString()}`
+    );
 
-    if (!currentWorkspace) {
+    if (!req.user) {
+      console.error("[GOOGLE CALLBACK] No user found in request after authentication");
       return res.redirect(
-        `${config.FRONTEND_GOOGLE_CALLBACK_URL}?status=failure`
+        `${config.FRONTEND_ORIGIN}/auth/google-failure?error=no_user`
       );
     }
 
-    return res.redirect(
-      `${config.FRONTEND_ORIGIN}/workspace/${currentWorkspace}`
-    );
+    const currentWorkspace = req.user?.currentWorkspace;
+    const userId = (req.user as any)?._id || (req.user as any)?.id;
+
+    console.log("[GOOGLE CALLBACK] User ID:", userId);
+    console.log("[GOOGLE CALLBACK] Current Workspace:", currentWorkspace);
+
+    if (!currentWorkspace) {
+      console.warn(
+        "[GOOGLE CALLBACK] User authenticated but no current workspace found"
+      );
+      return res.redirect(
+        `${config.FRONTEND_ORIGIN}/auth/google-failure?error=no_workspace`
+      );
+    }
+
+    const redirectUrl = `${config.FRONTEND_ORIGIN}/workspace/${currentWorkspace}`;
+    console.log("[GOOGLE CALLBACK] Redirecting to:", redirectUrl);
+
+    // Immediately redirect to frontend - don't send any other response
+    return res.redirect(redirectUrl);
   }
 );
 
