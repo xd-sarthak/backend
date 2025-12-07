@@ -21,6 +21,7 @@ passport.use(
       passReqToCallback: true,
     },
     async (req: Request, accessToken, refreshToken, profile, done) => {
+      console.log("GOOGLE CALLBACK BEING USED:", config.GOOGLE_CALLBACK_URL);
       try {
         const { email, sub: googleId, picture } = profile._json;
         console.log(profile, "profile");
