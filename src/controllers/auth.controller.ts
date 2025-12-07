@@ -18,9 +18,11 @@ export const googleLoginCallback = asyncHandler(
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
-      return res.redirect(
-        `${config.FRONTEND_ORIGIN}/auth/google-failure?error=no_user`
-      );
+      // Ensure FRONTEND_ORIGIN has protocol
+      const frontendOrigin = config.FRONTEND_ORIGIN.startsWith('http') 
+        ? config.FRONTEND_ORIGIN 
+        : `https://${config.FRONTEND_ORIGIN}`;
+      return res.redirect(307, `${frontendOrigin}/auth/google-failure?error=no_user`);
     }
 
     const currentWorkspace = req.user?.currentWorkspace;
@@ -37,12 +39,22 @@ export const googleLoginCallback = asyncHandler(
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
-      return res.redirect(
-        `${config.FRONTEND_ORIGIN}/auth/google-failure?error=no_workspace`
-      );
+      // Ensure FRONTEND_ORIGIN has protocol
+      const frontendOrigin = config.FRONTEND_ORIGIN.startsWith('http') 
+        ? config.FRONTEND_ORIGIN 
+        : `https://${config.FRONTEND_ORIGIN}`;
+      return res.redirect(307, `${frontendOrigin}/auth/google-failure?error=no_workspace`);
     }
 
-    const redirectUrl = `${config.FRONTEND_ORIGIN}/workspace/${currentWorkspace}?auth=success`;
+    // Convert ObjectId to string and ensure proper URL formatting
+    const workspaceId = String(currentWorkspace);
+    
+    // Ensure FRONTEND_ORIGIN has protocol
+    const frontendOrigin = config.FRONTEND_ORIGIN.startsWith('http') 
+      ? config.FRONTEND_ORIGIN 
+      : `https://${config.FRONTEND_ORIGIN}`;
+    
+    const redirectUrl = `${frontendOrigin}/workspace/${workspaceId}?auth=success`;
     
     // Store redirect URL in request for deduplication middleware to use
     // This allows duplicate requests to redirect to the correct workspace
@@ -57,9 +69,9 @@ export const googleLoginCallback = asyncHandler(
     res.setHeader("Expires", "0");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
     
-    // Perform redirect
-    // cookie-session will automatically save the session before sending the response
-    return res.redirect(302, redirectUrl);
+    // Use 307 (Temporary Redirect) instead of 302 to preserve method and prevent loops
+    // This ensures the browser follows the redirect properly
+    return res.redirect(307, redirectUrl);
   }
 );
 

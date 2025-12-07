@@ -52,9 +52,11 @@ authRoutes.get(
 
     if (error) {
       console.error(`[GOOGLE CALLBACK] OAuth error: ${error}`);
-      return res.redirect(
-        `${config.FRONTEND_ORIGIN}/auth/google-failure?error=${encodeURIComponent(error)}`
-      );
+      // Ensure FRONTEND_ORIGIN has protocol
+      const frontendOrigin = config.FRONTEND_ORIGIN.startsWith('http') 
+        ? config.FRONTEND_ORIGIN 
+        : `https://${config.FRONTEND_ORIGIN}`;
+      return res.redirect(307, `${frontendOrigin}/auth/google-failure?error=${encodeURIComponent(error)}`);
     }
 
     next();

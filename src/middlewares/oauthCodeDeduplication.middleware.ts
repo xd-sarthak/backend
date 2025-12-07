@@ -59,15 +59,19 @@ export const oauthCodeDeduplication = (
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
 
+    // Ensure FRONTEND_ORIGIN has protocol
+    const frontendOrigin = config.FRONTEND_ORIGIN.startsWith('http') 
+      ? config.FRONTEND_ORIGIN 
+      : `https://${config.FRONTEND_ORIGIN}`;
+
     // If the code was already consumed successfully and we have a redirect URL,
     // redirect to the same workspace (likely a browser retry)
     if (existingData.consumed && existingData.redirectUrl) {
       console.log(
         `[OAUTH DEDUP] Code already consumed, redirecting to stored URL: ${existingData.redirectUrl}`
       );
-      return res.redirect(
-        `${existingData.redirectUrl}${existingData.redirectUrl.includes('?') ? '&' : '?'}auth=already_authenticated`
-      );
+      // Use 307 to preserve method and prevent loops
+      return res.redirect(307, `${existingData.redirectUrl}${existingData.redirectUrl.includes('?') ? '&' : '?'}auth=already_authenticated`);
     }
 
     // If consumed but no redirect URL, redirect to frontend to check auth status
@@ -75,19 +79,17 @@ export const oauthCodeDeduplication = (
       console.log(
         `[OAUTH DEDUP] Code already consumed, redirecting to frontend root to check auth`
       );
-      return res.redirect(
-        `${config.FRONTEND_ORIGIN}?auth=check_status`
-      );
+      // Use 307 to preserve method and prevent loops
+      return res.redirect(307, `${frontendOrigin}?auth=check_status`);
     }
     
     // Code is being processed but not yet consumed (race condition)
-    // Wait a moment and redirect to frontend to check status
+    // Redirect to frontend to check status
     console.log(
       `[OAUTH DEDUP] Code is being processed, redirecting to frontend to check status`
     );
-    return res.redirect(
-      `${config.FRONTEND_ORIGIN}?auth=processing`
-    );
+    // Use 307 to preserve method and prevent loops
+    return res.redirect(307, `${frontendOrigin}?auth=processing`);
   }
 
   // Mark code as being processed immediately (before passport tries to exchange it)

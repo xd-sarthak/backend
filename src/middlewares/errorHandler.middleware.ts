@@ -35,9 +35,11 @@ export const errorHandler: ErrorRequestHandler = (
       // For OAuth callback routes, redirect to failure page
       // Check both with and without BASE_PATH prefix
       if (req.path.includes("/auth/google/callback") || req.path.includes("google/callback")) {
-        return res.redirect(
-          `${config.FRONTEND_ORIGIN}/auth/google-failure?error=code_already_used`
-        );
+        // Ensure FRONTEND_ORIGIN has protocol
+        const frontendOrigin = config.FRONTEND_ORIGIN.startsWith('http') 
+          ? config.FRONTEND_ORIGIN 
+          : `https://${config.FRONTEND_ORIGIN}`;
+        return res.redirect(307, `${frontendOrigin}/auth/google-failure?error=code_already_used`);
       }
       // For other routes, return JSON error
       return res.status(HTTPSTATUS.BAD_REQUEST).json({
