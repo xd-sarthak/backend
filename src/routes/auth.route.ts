@@ -55,6 +55,7 @@ authRoutes.get(
     next();
   },
   oauthCodeDeduplication,
+  // Use standard passport.authenticate - OAuth errors will be caught by error handler
   passport.authenticate("google", {
     failureRedirect: `${config.FRONTEND_ORIGIN}/auth/google-failure`,
     session: true,
