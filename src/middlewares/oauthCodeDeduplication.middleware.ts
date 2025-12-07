@@ -4,7 +4,11 @@ import { config } from "../config/app.config";
 // In-memory store for tracking processed OAuth codes
 // In production, consider using Redis for distributed systems
 // Codes are marked as "consumed" and never removed to prevent reuse
-const processedCodes = new Map<string, { timestamp: number; consumed: boolean }>();
+const processedCodes = new Map<string, { 
+  timestamp: number; 
+  consumed: boolean; 
+  redirectUrl?: string; // Store redirect URL for successful authentications
+}>();
 
 // Clean up very old codes (older than 1 hour) to prevent memory leaks
 // OAuth codes are single-use and should never be reused, so we keep them for a long time
@@ -50,10 +54,39 @@ export const oauthCodeDeduplication = (
       `[OAUTH DEDUP] Duplicate OAuth code detected: ${code.substring(0, 10)}... (first used ${Math.round(timeSinceFirstUse / 1000)}s ago, consumed: ${existingData.consumed})`
     );
 
-    // Return a redirect to frontend with error
-    // Don't process the code again - OAuth codes are single-use
+    // Set headers to prevent caching/retries
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
+    // If the code was already consumed successfully and we have a redirect URL,
+    // redirect to the same workspace (likely a browser retry)
+    if (existingData.consumed && existingData.redirectUrl) {
+      console.log(
+        `[OAUTH DEDUP] Code already consumed, redirecting to stored URL: ${existingData.redirectUrl}`
+      );
+      return res.redirect(
+        `${existingData.redirectUrl}${existingData.redirectUrl.includes('?') ? '&' : '?'}auth=already_authenticated`
+      );
+    }
+
+    // If consumed but no redirect URL, redirect to frontend to check auth status
+    if (existingData.consumed) {
+      console.log(
+        `[OAUTH DEDUP] Code already consumed, redirecting to frontend root to check auth`
+      );
+      return res.redirect(
+        `${config.FRONTEND_ORIGIN}?auth=check_status`
+      );
+    }
+    
+    // Code is being processed but not yet consumed (race condition)
+    // Wait a moment and redirect to frontend to check status
+    console.log(
+      `[OAUTH DEDUP] Code is being processed, redirecting to frontend to check status`
+    );
     return res.redirect(
-      `${config.FRONTEND_ORIGIN}/auth/google-failure?error=duplicate_code`
+      `${config.FRONTEND_ORIGIN}?auth=processing`
     );
   }
 
@@ -72,9 +105,19 @@ export const oauthCodeDeduplication = (
       // Mark as consumed if the response was successful (2xx or 3xx redirect)
       if (res.statusCode >= 200 && res.statusCode < 400) {
         codeData.consumed = true;
-        console.log(
-          `[OAUTH DEDUP] Marked code as consumed: ${code.substring(0, 10)}... (status: ${res.statusCode})`
-        );
+        
+        // Store redirect URL if available (from successful authentication)
+        const redirectUrl = (req as any).oauthRedirectUrl;
+        if (redirectUrl) {
+          codeData.redirectUrl = redirectUrl;
+          console.log(
+            `[OAUTH DEDUP] Marked code as consumed: ${code.substring(0, 10)}... (status: ${res.statusCode}, redirect: ${redirectUrl})`
+          );
+        } else {
+          console.log(
+            `[OAUTH DEDUP] Marked code as consumed: ${code.substring(0, 10)}... (status: ${res.statusCode})`
+          );
+        }
       }
       // Keep the code in the map permanently to prevent any future reuse
       // OAuth codes are single-use tokens and should never be processed again

@@ -14,6 +14,10 @@ export const googleLoginCallback = asyncHandler(
 
     if (!req.user) {
       console.error("[GOOGLE CALLBACK] No user found in request after authentication");
+      // Set headers to prevent caching/retries
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       return res.redirect(
         `${config.FRONTEND_ORIGIN}/auth/google-failure?error=no_user`
       );
@@ -29,16 +33,48 @@ export const googleLoginCallback = asyncHandler(
       console.warn(
         "[GOOGLE CALLBACK] User authenticated but no current workspace found"
       );
+      // Set headers to prevent caching/retries
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       return res.redirect(
         `${config.FRONTEND_ORIGIN}/auth/google-failure?error=no_workspace`
       );
     }
 
-    const redirectUrl = `${config.FRONTEND_ORIGIN}/workspace/${currentWorkspace}`;
-    console.log("[GOOGLE CALLBACK] Redirecting to:", redirectUrl);
+    const redirectUrl = `${config.FRONTEND_ORIGIN}/workspace/${currentWorkspace}?auth=success`;
+    
+    // Store redirect URL in request for deduplication middleware to use
+    // This allows duplicate requests to redirect to the correct workspace
+    (req as any).oauthRedirectUrl = redirectUrl;
 
-    // Immediately redirect to frontend - don't send any other response
-    return res.redirect(redirectUrl);
+    // Ensure session is saved before redirecting
+    // This is important for cross-domain redirects
+    return new Promise<void>((resolve, reject) => {
+      req.session?.save((err: Error | null) => {
+        if (err) {
+          console.error("[GOOGLE CALLBACK] Error saving session:", err);
+          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
+          return res.redirect(
+            `${config.FRONTEND_ORIGIN}/auth/google-failure?error=session_error`
+          );
+        }
+
+        console.log("[GOOGLE CALLBACK] Redirecting to:", redirectUrl);
+
+        // Set headers to prevent caching/retries and ensure clean redirect
+        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+        res.setHeader("X-Robots-Tag", "noindex, nofollow");
+        
+        // Perform redirect
+        res.redirect(302, redirectUrl);
+        resolve();
+      });
+    });
   }
 );
 

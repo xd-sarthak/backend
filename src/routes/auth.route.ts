@@ -45,6 +45,11 @@ authRoutes.get(
     console.log("[GOOGLE CALLBACK] Code present:", !!code);
     console.log("[GOOGLE CALLBACK] Error:", error || "none");
 
+    // Set headers to prevent caching/retries on all OAuth callback requests
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
     if (error) {
       console.error(`[GOOGLE CALLBACK] OAuth error: ${error}`);
       return res.redirect(
