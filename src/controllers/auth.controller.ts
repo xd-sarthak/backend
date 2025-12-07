@@ -115,6 +115,8 @@ export const loginController = asyncHandler(
             return next(err);
           }
 
+          // cookie-session automatically saves the session when response is sent
+          // No need to call save() - it's not available in cookie-session
           return res.status(HTTPSTATUS.OK).json({
             message: "Logged in successfully",
             user,

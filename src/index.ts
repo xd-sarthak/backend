@@ -33,8 +33,21 @@ const corsOptions: cors.CorsOptions = {
     // Allow no-origin requests (health checks, server-to-server, curl, OAuth callbacks from Google)
     if (!origin) return callback(null, true);
 
-    // Allow frontend origin explicitly
-    if (origin === config.FRONTEND_ORIGIN) {
+    // Normalize FRONTEND_ORIGIN for comparison (remove protocol if present, compare domains)
+    const normalizeOrigin = (url: string) => {
+      return url.replace(/^https?:\/\//, '').toLowerCase();
+    };
+
+    const frontendOriginNormalized = normalizeOrigin(config.FRONTEND_ORIGIN);
+    const requestOriginNormalized = normalizeOrigin(origin);
+
+    // Allow frontend origin explicitly (with or without protocol)
+    if (
+      origin === config.FRONTEND_ORIGIN ||
+      requestOriginNormalized === frontendOriginNormalized ||
+      origin === `https://${config.FRONTEND_ORIGIN}` ||
+      origin === `http://${config.FRONTEND_ORIGIN}`
+    ) {
       return callback(null, true);
     }
 
@@ -83,11 +96,13 @@ app.use(
   session({
     name: "session",
     keys: [config.SESSION_SECRET],
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
     secure: isProd, // secure cookies in production (requires HTTPS)
     httpOnly: true,
-    sameSite: "lax" as const, // Changed from 'none' to 'lax' for better cross-domain support
-    domain: isProd ? undefined : undefined, // Let browser set domain automatically
+    // Use 'none' for cross-origin requests (frontend on vercel.app, backend on render.com)
+    // This allows cookies to be sent with cross-origin POST requests (like login)
+    sameSite: isProd ? ("none" as const) : ("lax" as const),
+    domain: undefined, // Let browser set domain automatically (don't restrict to specific domain)
   })
 );
 
