@@ -23,9 +23,19 @@ const app = express();
 const BASE_PATH = config.BASE_PATH;
 
 // CORS configuration — placed at the very top so it runs before any other middleware
-const FRONTEND_ORIGIN = "https://drillwork-dbhnsintn-sarthaks-projects-7954848a.vercel.app";
 const corsOptions: cors.CorsOptions = {
-  origin: FRONTEND_ORIGIN,
+  origin: (origin, callback) => {
+    // Allow no-origin requests (health checks, server-to-server, curl)
+    if (!origin) return callback(null, true);
+
+    // Allow ANY *.vercel.app domain
+    if (/\.vercel\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    // Block everything else
+    return callback(new Error("Not allowed by CORS: " + origin));
+  },
   credentials: true,
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
   allowedHeaders: [
@@ -39,6 +49,7 @@ const corsOptions: cors.CorsOptions = {
 };
 
 app.use(cors(corsOptions));
+
 // Ensure preflight requests are handled
 app.options("*", cors(corsOptions));
 
