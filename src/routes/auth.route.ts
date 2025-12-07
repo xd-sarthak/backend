@@ -19,20 +19,15 @@ authRoutes.post("/logout", logOutController);
 
 authRoutes.get(
   "/google",
-  (req:Request, res:Response, next:NextFunction) => {
-    console.log("OAUTH AUTH REQUEST → redirect_uri:", config.GOOGLE_CALLBACK_URL);
+  (req, res, next) => {
+    console.log("[GOOGLE OAUTH] Redirecting to:", config.GOOGLE_CALLBACK_URL);
     next();
   },
-  passport.authenticate("google")
-);
-
-
-authRoutes.get(
-  "/google",
   passport.authenticate("google", {
     scope: ["profile", "email"],
   })
 );
+
 
 authRoutes.get(
   "/google/callback",
