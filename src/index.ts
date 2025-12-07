@@ -10,7 +10,6 @@ import { asyncHandler } from "./middlewares/asyncHandler.middleware";
 import { BadRequestException } from "./utils/appError";
 import { ErrorCodeEnum } from "./enums/error-code.enum";
 
-import "./config/passport.config";
 import passport from "passport";
 import authRoutes from "./routes/auth.route";
 import userRoutes from "./routes/user.route";
@@ -23,27 +22,54 @@ import taskRoutes from "./routes/task.route";
 const app = express();
 const BASE_PATH = config.BASE_PATH;
 
+// CORS configuration — placed at the very top so it runs before any other middleware
+const FRONTEND_ORIGIN = "https://drillwork-dbhnsintn-sarthaks-projects-7954848a.vercel.app";
+const corsOptions: cors.CorsOptions = {
+  origin: FRONTEND_ORIGIN,
+  credentials: true,
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+    "Access-Control-Allow-Credentials",
+  ],
+};
 
-app.use(
-  cors({
-    origin: config.FRONTEND_ORIGIN,
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
+// Ensure preflight requests are handled
+app.options("*", cors(corsOptions));
 
+// Ensure responses always include the expected CORS headers (defensive)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", FRONTEND_ORIGIN);
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header(
+    "Access-Control-Allow-Headers",
+    corsOptions.allowedHeaders!.join(", ")
+  );
+  next();
+});
 
 app.use(express.json());
-
 app.use(express.urlencoded({ extended: true }));
 
+// Load passport configuration after CORS is in place to avoid any thrown errors
+// from passport setup running before CORS middleware.
+void import("./config/passport.config");
+
+// cookie-session options depend on environment
+const isProd = config.NODE_ENV === "production";
 app.use(
   session({
     name: "session",
     keys: [config.SESSION_SECRET],
     maxAge: 24 * 60 * 60 * 1000,
-    secure: config.NODE_ENV === "production",
+    secure: isProd, // secure cookies in production (requires HTTPS)
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: isProd ? ("none" as const) : ("lax" as const),
   })
 );
 
@@ -58,6 +84,9 @@ app.get(
     });
   })
 );
+
+// Lightweight health-check endpoint (no authentication)
+app.get("/health", (_req: Request, res: Response) => res.sendStatus(200));
 
 app.use(`${BASE_PATH}/auth`, authRoutes);
 app.use(`${BASE_PATH}/user`, isAuthenticated, userRoutes);
